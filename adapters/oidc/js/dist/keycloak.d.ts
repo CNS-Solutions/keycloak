@@ -61,7 +61,7 @@ export interface KeycloakInitOptions {
 	useNonce?: boolean;
 
 	/**
-	 * 
+	 *
 	 * Allow usage of different types of adapters or a custom adapter to make Keycloak work in different environments.
 	 *
 	 * The following options are supported:
@@ -93,7 +93,7 @@ export interface KeycloakInitOptions {
 	 * ```
 	 */
 	adapter?: 'default' | 'cordova' | 'cordova-native' | KeycloakAdapter;
-	
+
 	/**
 	 * Specifies an action to do on load.
 	 */
@@ -182,12 +182,12 @@ export interface KeycloakInitOptions {
 	enableLogging?: boolean
 
 	/**
-	 * Set the default scope parameter to the login endpoint. Use a space-delimited list of scopes. 
+	 * Set the default scope parameter to the login endpoint. Use a space-delimited list of scopes.
 	 * Note that the scope 'openid' will be always be added to the list of scopes by the adapter.
 	 * Note that the default scope specified here is overwritten if the `login()` options specify scope explicitly.
 	 */
 	scope?: string
-	
+
 	/**
 	 * Configures how long will Keycloak adapter wait for receiving messages from server in ms. This is used,
 	 * for example, when waiting for response of 3rd party cookies check.
@@ -247,9 +247,9 @@ export interface KeycloakLoginOptions {
 	 */
 	idpHint?: string;
 
-				/**
+	/**
 	 * Sets the 'ui_locales' query param in compliance with section 3.1.2.1
-							 * of the OIDC 1.0 specification.
+	 * of the OIDC 1.0 specification.
 	 */
 	locale?: string;
 
@@ -275,7 +275,7 @@ export interface KeycloakAccountOptions {
 	/**
 	 * Specifies the uri to redirect to when redirecting back to the application.
 	 */
-	redirectUri?: string;	
+	redirectUri?: string;
 }
 
 export type KeycloakPromiseCallback<T> = (result: T) => void;
@@ -283,14 +283,14 @@ export type KeycloakPromiseCallback<T> = (result: T) => void;
 export interface KeycloakPromise<TSuccess, TError> extends Promise<TSuccess> {
 	/**
 	 * Function to call if the promised action succeeds.
-	 * 
+	 *
 	 * @deprecated Use `.then()` instead.
 	 */
 	success(callback: KeycloakPromiseCallback<TSuccess>): KeycloakPromise<TSuccess, TError>;
 
 	/**
 	 * Function to call if the promised action throws an error.
-	 * 
+	 *
 	 * @deprecated Use `.catch()` instead.
 	 */
 	error(callback: KeycloakPromiseCallback<TError>): KeycloakPromise<TSuccess, TError>;
@@ -302,11 +302,11 @@ export interface KeycloakError {
 }
 
 export interface KeycloakAdapter {
-	login(options?: KeycloakLoginOptions): KeycloakPromise<void, void>;
-	logout(options?: KeycloakLogoutOptions): KeycloakPromise<void, void>;
-	register(options?: KeycloakRegisterOptions): KeycloakPromise<void, void>;
-	accountManagement(): KeycloakPromise<void, void>;
-	redirectUri(options: { redirectUri: string; }, encodeHash: boolean): string;
+	login(kc: Keycloak, options?: KeycloakLoginOptions): KeycloakPromise<void, void>;
+	logout(kc: Keycloak, options?: KeycloakLogoutOptions): KeycloakPromise<void, void>;
+	register(kc: Keycloak, options?: KeycloakRegisterOptions): KeycloakPromise<void, void>;
+	accountManagement(kc: Keycloak): KeycloakPromise<void, void>;
+	redirectUri(kc: Keycloak, options: { redirectUri: string; }, encodeHash: boolean): string;
 }
 
 export interface KeycloakProfile {
@@ -357,6 +357,15 @@ export type KeycloakInstance = Keycloak;
 declare function Keycloak(config?: KeycloakConfig | string): Keycloak;
 
 /**
+ * @private Undocumented.
+ */
+export interface KeycloakPromiseWrapper<TSuccess, TError> {
+	setSuccess(result?: TSuccess);
+	setError(result?: TError);
+	promise: KeycloakPromise<TSuccess, TError>
+}
+
+/**
  * A client for the Keycloak authentication server.
  * @see {@link https://keycloak.gitbooks.io/securing-client-applications-guide/content/topics/oidc/javascript-adapter.html|Keycloak JS adapter documentation}
  */
@@ -373,276 +382,291 @@ declare class Keycloak {
 	authenticated?: boolean;
 
 	/**
-	* The user id.
-	*/
+	 * The user id.
+	 */
 	subject?: string;
 
 	/**
-	* Response mode passed in init (default value is `'fragment'`).
-	*/
+	 * Response mode passed in init (default value is `'fragment'`).
+	 */
 	responseMode?: KeycloakResponseMode;
 
 	/**
-	* Response type sent to Keycloak with login requests. This is determined
-	* based on the flow value used during initialization, but can be overridden
-	* by setting this value.
-	*/
+	 * Response type sent to Keycloak with login requests. This is determined
+	 * based on the flow value used during initialization, but can be overridden
+	 * by setting this value.
+	 */
 	responseType?: KeycloakResponseType;
 
 	/**
-	* Flow passed in init.
-	*/
+	 * Flow passed in init.
+	 */
 	flow?: KeycloakFlow;
 
 	/**
-	* The realm roles associated with the token.
-	*/
+	 * The realm roles associated with the token.
+	 */
 	realmAccess?: KeycloakRoles;
 
 	/**
-	* The resource roles associated with the token.
-	*/
+	 * The resource roles associated with the token.
+	 */
 	resourceAccess?: KeycloakResourceAccess;
 
 	/**
-	* The base64 encoded token that can be sent in the Authorization header in
-	* requests to services.
-	*/
+	 * The base64 encoded token that can be sent in the Authorization header in
+	 * requests to services.
+	 */
 	token?: string;
 
 	/**
-	* The parsed token as a JavaScript object.
-	*/
+	 * The parsed token as a JavaScript object.
+	 */
 	tokenParsed?: KeycloakTokenParsed;
 
 	/**
-	* The base64 encoded refresh token that can be used to retrieve a new token.
-	*/
+	 * The base64 encoded refresh token that can be used to retrieve a new token.
+	 */
 	refreshToken?: string;
 
 	/**
-	* The parsed refresh token as a JavaScript object.
-	*/
+	 * The parsed refresh token as a JavaScript object.
+	 */
 	refreshTokenParsed?: KeycloakTokenParsed;
 
 	/**
-	* The base64 encoded ID token.
-	*/
+	 * The base64 encoded ID token.
+	 */
 	idToken?: string;
 
 	/**
-	* The parsed id token as a JavaScript object.
-	*/
+	 * The parsed id token as a JavaScript object.
+	 */
 	idTokenParsed?: KeycloakTokenParsed;
 
 	/**
-	* The estimated time difference between the browser time and the Keycloak
-	* server in seconds. This value is just an estimation, but is accurate
-	* enough when determining if a token is expired or not.
-	*/
+	 * The estimated time difference between the browser time and the Keycloak
+	 * server in seconds. This value is just an estimation, but is accurate
+	 * enough when determining if a token is expired or not.
+	 */
 	timeSkew?: number;
 
 	/**
-	* @private Undocumented.
-	*/
+	 * @private Undocumented.
+	 */
 	loginRequired?: boolean;
 
 	/**
-	* @private Undocumented.
-	*/
+	 * @private Undocumented.
+	 */
 	authServerUrl?: string;
 
 	/**
-	* @private Undocumented.
-	*/
+	 * @private Undocumented.
+	 */
 	realm?: string;
 
 	/**
-	* @private Undocumented.
-	*/
+	 * @private Undocumented.
+	 */
 	clientId?: string;
 
 	/**
-	* @private Undocumented.
-	*/
+	 * @private Undocumented.
+	 */
 	clientSecret?: string;
 
 	/**
-	* @private Undocumented.
-	*/
+	 * @private Undocumented.
+	 */
 	redirectUri?: string;
 
 	/**
-	* @private Undocumented.
-	*/
+	 * @private Undocumented.
+	 */
 	sessionId?: string;
 
 	/**
-	* @private Undocumented.
-	*/
+	 * @private Undocumented.
+	 */
 	profile?: KeycloakProfile;
 
 	/**
-	* @private Undocumented.
-	*/
+	 * @private Undocumented.
+	 */
 	userInfo?: {}; // KeycloakUserInfo;
 
 	/**
-	* Called when the adapter is initialized.
-	*/
+	 * Called when the adapter is initialized.
+	 */
 	onReady?(authenticated?: boolean): void;
 
 	/**
-	* Called when a user is successfully authenticated.
-	*/
+	 * Called when a user is successfully authenticated.
+	 */
 	onAuthSuccess?(): void;
 
 	/**
-	* Called if there was an error during authentication.
-	*/
+	 * Called if there was an error during authentication.
+	 */
 	onAuthError?(errorData: KeycloakError): void;
 
 	/**
-	* Called when the token is refreshed.
-	*/
+	 * Called when the token is refreshed.
+	 */
 	onAuthRefreshSuccess?(): void;
 
 	/**
-	* Called if there was an error while trying to refresh the token.
-	*/
+	 * Called if there was an error while trying to refresh the token.
+	 */
 	onAuthRefreshError?(): void;
 
 	/**
-	* Called if the user is logged out (will only be called if the session
-	* status iframe is enabled, or in Cordova mode).
-	*/
+	 * Called if the user is logged out (will only be called if the session
+	 * status iframe is enabled, or in Cordova mode).
+	 */
 	onAuthLogout?(): void;
 
 	/**
-	* Called when the access token is expired. If a refresh token is available
-	* the token can be refreshed with Keycloak#updateToken, or in cases where
-	* it's not (ie. with implicit flow) you can redirect to login screen to
-	* obtain a new access token.
-	*/
+	 * Called when the access token is expired. If a refresh token is available
+	 * the token can be refreshed with Keycloak#updateToken, or in cases where
+	 * it's not (ie. with implicit flow) you can redirect to login screen to
+	 * obtain a new access token.
+	 */
 	onTokenExpired?(): void;
 
 	/**
-	* Called when a AIA has been requested by the application.
-	*/
+	 * Called when a AIA has been requested by the application.
+	 */
 	onActionUpdate?(status: 'success'|'cancelled'|'error'): void;
 
 	/**
-	* Called to initialize the adapter.
-	* @param initOptions Initialization options.
-	* @returns A promise to set functions to be invoked on success or error.
-	*/
+	 * Called to initialize the adapter.
+	 * @param initOptions Initialization options.
+	 * @returns A promise to set functions to be invoked on success or error.
+	 */
 	init(initOptions: KeycloakInitOptions): KeycloakPromise<boolean, KeycloakError>;
 
 	/**
-	* Redirects to login form.
-	* @param options Login options.
-	*/
+	 * Redirects to login form.
+	 * @param options Login options.
+	 */
 	login(options?: KeycloakLoginOptions): KeycloakPromise<void, void>;
 
 	/**
-	* Redirects to logout.
-	* @param options Logout options.
-	*/
+	 * Redirects to logout.
+	 * @param options Logout options.
+	 */
 	logout(options?: KeycloakLogoutOptions): KeycloakPromise<void, void>;
 
 	/**
-	* Redirects to registration form.
-	* @param options The options used for the registration.
-	*/
+	 * Redirects to registration form.
+	 * @param options The options used for the registration.
+	 */
 	register(options?: KeycloakRegisterOptions): KeycloakPromise<void, void>;
 
 	/**
-	* Redirects to the Account Management Console.
-	*/
+	 * Redirects to the Account Management Console.
+	 */
 	accountManagement(): KeycloakPromise<void, void>;
 
 	/**
-	* Returns the URL to login form.
-	* @param options Supports same options as Keycloak#login.
-	*/
+	 * Returns the URL to login form.
+	 * @param options Supports same options as Keycloak#login.
+	 */
 	createLoginUrl(options?: KeycloakLoginOptions): string;
 
 	/**
-	* Returns the URL to logout the user.
-	* @param options Logout options.
-	*/
+	 * Returns the URL to logout the user.
+	 * @param options Logout options.
+	 */
 	createLogoutUrl(options?: KeycloakLogoutOptions): string;
 
 	/**
-	* Returns the URL to registration page.
-	* @param options The options used for creating the registration URL.
-	*/
+	 * Returns the URL to registration page.
+	 * @param options The options used for creating the registration URL.
+	 */
 	createRegisterUrl(options?: KeycloakRegisterOptions): string;
 
 	/**
-	* Returns the URL to the Account Management Console.
-	* @param options The options used for creating the account URL.
-	*/
+	 * Returns the URL to the Account Management Console.
+	 * @param options The options used for creating the account URL.
+	 */
 	createAccountUrl(options?: KeycloakAccountOptions): string;
 
 	/**
-	* Returns true if the token has less than `minValidity` seconds left before
-	* it expires.
-	* @param minValidity If not specified, `0` is used.
-	*/
+	 * Returns true if the token has less than `minValidity` seconds left before
+	 * it expires.
+	 * @param minValidity If not specified, `0` is used.
+	 */
 	isTokenExpired(minValidity?: number): boolean;
 
 	/**
-	* If the token expires within `minValidity` seconds, the token is refreshed.
-	* If the session status iframe is enabled, the session status is also
-	* checked.
-	* @returns A promise to set functions that can be invoked if the token is
-	*          still valid, or if the token is no longer valid.
-	* @example
-	* ```js
-	* keycloak.updateToken(5).then(function(refreshed) {
-	*   if (refreshed) {
-	*     alert('Token was successfully refreshed');
-	*   } else {
-	*     alert('Token is still valid');
-	*   }
-	* }).catch(function() {
-	*   alert('Failed to refresh the token, or the session has expired');
-	* });
-	*/
+	 * If the token expires within `minValidity` seconds, the token is refreshed.
+	 * If the session status iframe is enabled, the session status is also
+	 * checked.
+	 * @returns A promise to set functions that can be invoked if the token is
+	 *          still valid, or if the token is no longer valid.
+	 * @example
+	 * ```js
+	 * keycloak.updateToken(5).then(function(refreshed) {
+	 *   if (refreshed) {
+	 *     alert('Token was successfully refreshed');
+	 *   } else {
+	 *     alert('Token is still valid');
+	 *   }
+	 * }).catch(function() {
+	 *   alert('Failed to refresh the token, or the session has expired');
+	 * });
+	 */
 	updateToken(minValidity: number): KeycloakPromise<boolean, boolean>;
 
 	/**
-	* Clears authentication state, including tokens. This can be useful if
-	* the application has detected the session was expired, for example if
-	* updating token fails. Invoking this results in Keycloak#onAuthLogout
-	* callback listener being invoked.
-	*/
+	 * Clears authentication state, including tokens. This can be useful if
+	 * the application has detected the session was expired, for example if
+	 * updating token fails. Invoking this results in Keycloak#onAuthLogout
+	 * callback listener being invoked.
+	 */
 	clearToken(): void;
 
 	/**
-	* Returns true if the token has the given realm role.
-	* @param role A realm role name.
-	*/
+	 * Returns true if the token has the given realm role.
+	 * @param role A realm role name.
+	 */
 	hasRealmRole(role: string): boolean;
 
 	/**
-	* Returns true if the token has the given role for the resource.
-	* @param role A role name.
-	* @param resource If not specified, `clientId` is used.
-	*/
+	 * Returns true if the token has the given role for the resource.
+	 * @param role A role name.
+	 * @param resource If not specified, `clientId` is used.
+	 */
 	hasResourceRole(role: string, resource?: string): boolean;
 
 	/**
-	* Loads the user's profile.
-	* @returns A promise to set functions to be invoked on success or error.
-	*/
+	 * Loads the user's profile.
+	 * @returns A promise to set functions to be invoked on success or error.
+	 */
 	loadUserProfile(): KeycloakPromise<KeycloakProfile, void>;
 
 	/**
-	* @private Undocumented.
-	*/
+	 * @private Undocumented.
+	 */
 	loadUserInfo(): KeycloakPromise<{}, void>;
+
+	/**
+	 * @private Undocumented.
+	 */
+	parseCallback(url: string);
+
+	/**
+	 * @private Undocumented.
+	 */
+	processCallback(oauth: any, promise: KeycloakPromiseWrapper<void, void>);
+
+	/**
+	 * @private Undocumented.
+	 */
+	createPromise<TSuccess, TError>(): KeycloakPromiseWrapper<TSuccess, TError>;
 }
 
 export default Keycloak;

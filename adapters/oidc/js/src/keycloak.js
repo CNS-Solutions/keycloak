@@ -88,10 +88,6 @@ function Keycloak (config) {
                 loginIframe.interval = initOptions.checkLoginIframeInterval;
             }
 
-            if (initOptions.onLoad === 'login-required') {
-                kc.loginRequired = true;
-            }
-
             if (initOptions.responseMode) {
                 if (initOptions.responseMode === 'query' || initOptions.responseMode === 'fragment') {
                     kc.responseMode = initOptions.responseMode;
@@ -328,7 +324,7 @@ function Keycloak (config) {
     }
 
     kc.login = function (options) {
-        return adapter.login(options);
+        return adapter.login(kc, options);
     }
 
     function generateRandomData(len) {
@@ -391,7 +387,7 @@ function Keycloak (config) {
         var state = createUUID();
         var nonce = createUUID();
 
-        var redirectUri = adapter.redirectUri(options);
+        var redirectUri = adapter.redirectUri(kc, options);
 
         var callbackState = {
             state: state,
@@ -473,13 +469,13 @@ function Keycloak (config) {
     }
 
     kc.logout = function(options) {
-        return adapter.logout(options);
+        return adapter.logout(kc, options);
     }
 
     kc.createLogoutUrl = function(options) {
         var url = kc.endpoints.logout()
             + '?client_id=' + encodeURIComponent(kc.clientId)
-            + '&post_logout_redirect_uri=' + encodeURIComponent(adapter.redirectUri(options, false));
+            + '&post_logout_redirect_uri=' + encodeURIComponent(adapter.redirectUri(kc, options, false));
 
         if (kc.idToken) {
             url += '&id_token_hint=' + encodeURIComponent(kc.idToken);
@@ -489,7 +485,7 @@ function Keycloak (config) {
     }
 
     kc.register = function (options) {
-        return adapter.register(options);
+        return adapter.register(kc, options);
     }
 
     kc.createRegisterUrl = function(options) {
@@ -507,13 +503,13 @@ function Keycloak (config) {
             url = realm
             + '/account'
             + '?referrer=' + encodeURIComponent(kc.clientId)
-            + '&referrer_uri=' + encodeURIComponent(adapter.redirectUri(options));
+            + '&referrer_uri=' + encodeURIComponent(adapter.redirectUri(kc, options));
         }
         return url;
     }
 
     kc.accountManagement = function() {
-        return adapter.accountManagement();
+        return adapter.accountManagement(kc);
     }
 
     kc.hasRealmRole = function (role) {
@@ -797,6 +793,8 @@ function Keycloak (config) {
 
     }
 
+    kc.processCallback = processCallback;
+
     function loadConfig(url) {
         var promise = createPromise();
         var configUrl;
@@ -1072,6 +1070,8 @@ function Keycloak (config) {
         return oauth;
     }
 
+    kc.parseCallback = parseCallback;
+
     function parseCallbackUrl(url) {
         var supportedParams;
         switch (kc.flow) {
@@ -1188,6 +1188,8 @@ function Keycloak (config) {
 
         return p;
     }
+
+    kc.createPromise = createPromise;
 
     // Function to extend existing native Promise with timeout
     function applyTimeoutToPromise(promise, timeout, errorMessage) {
@@ -1339,22 +1341,22 @@ function Keycloak (config) {
     function loadAdapter(type) {
         if (!type || type == 'default') {
             return {
-                login: function(options) {
+                login: function(kc, options) {
                     window.location.replace(kc.createLoginUrl(options));
                     return createPromise().promise;
                 },
 
-                logout: function(options) {
+                logout: function(kc, options) {
                     window.location.replace(kc.createLogoutUrl(options));
                     return createPromise().promise;
                 },
 
-                register: function(options) {
+                register: function(kc, options) {
                     window.location.replace(kc.createRegisterUrl(options));
                     return createPromise().promise;
                 },
 
-                accountManagement : function() {
+                accountManagement : function(kc) {
                     var accountUrl = kc.createAccountUrl();
                     if (typeof accountUrl !== 'undefined') {
                         window.location.href = accountUrl;
@@ -1364,7 +1366,7 @@ function Keycloak (config) {
                     return createPromise().promise;
                 },
 
-                redirectUri: function(options, encodeHash) {
+                redirectUri: function(kc, options, encodeHash) {
                     if (arguments.length == 1) {
                         encodeHash = true;
                     }
@@ -1419,7 +1421,7 @@ function Keycloak (config) {
             };
 
             return {
-                login: function(options) {
+                login: function(kc, options) {
                     var promise = createPromise();
 
                     var cordovaOptions = createCordovaOptions(options);
@@ -1467,7 +1469,7 @@ function Keycloak (config) {
                     return promise.promise;
                 },
 
-                logout: function(options) {
+                logout: function(kc, options) {
                     var promise = createPromise();
 
                     var logoutUrl = kc.createLogoutUrl(options);
@@ -1502,7 +1504,7 @@ function Keycloak (config) {
                     return promise.promise;
                 },
 
-                register : function(options) {
+                register : function(kc, options) {
                     var promise = createPromise();
                     var registerUrl = kc.createRegisterUrl();
                     var cordovaOptions = createCordovaOptions(options);
@@ -1517,7 +1519,7 @@ function Keycloak (config) {
                     return promise.promise;
                 },
 
-                accountManagement : function() {
+                accountManagement : function(kc) {
                     var accountUrl = kc.createAccountUrl();
                     if (typeof accountUrl !== 'undefined') {
                         var ref = cordovaOpenWindowWrapper(accountUrl, '_blank', 'location=no');
@@ -1531,7 +1533,7 @@ function Keycloak (config) {
                     }
                 },
 
-                redirectUri: function(options) {
+                redirectUri: function(kc, options) {
                     return 'http://localhost';
                 }
             }
@@ -1541,7 +1543,7 @@ function Keycloak (config) {
             loginIframe.enable = false;
 
             return {
-                login: function(options) {
+                login: function(kc, options) {
                     var promise = createPromise();
                     var loginUrl = kc.createLoginUrl(options);
 
@@ -1556,7 +1558,7 @@ function Keycloak (config) {
                     return promise.promise;
                 },
 
-                logout: function(options) {
+                logout: function(kc, options) {
                     var promise = createPromise();
                     var logoutUrl = kc.createLogoutUrl(options);
 
@@ -1571,7 +1573,7 @@ function Keycloak (config) {
                     return promise.promise;
                 },
 
-                register : function(options) {
+                register : function(kc, options) {
                     var promise = createPromise();
                     var registerUrl = kc.createRegisterUrl(options);
                     universalLinks.subscribe('keycloak' , function(event) {
@@ -1585,7 +1587,7 @@ function Keycloak (config) {
 
                 },
 
-                accountManagement : function() {
+                accountManagement : function(kc) {
                     var accountUrl = kc.createAccountUrl();
                     if (typeof accountUrl !== 'undefined') {
                         window.cordova.plugins.browsertab.openUrl(accountUrl);
@@ -1594,7 +1596,7 @@ function Keycloak (config) {
                     }
                 },
 
-                redirectUri: function(options) {
+                redirectUri: function(kc, options) {
                     if (options && options.redirectUri) {
                         return options.redirectUri;
                     } else if (kc.redirectUri) {
